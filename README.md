@@ -20,7 +20,7 @@ Just type the argument:
 - 10 - uses default currency - can be specified in *convertcurrency.py*
 - *no argument* - uses default currency and 1 as amount
 
-![10 usd][cc3]
+![1 pln][cc3]
 
 ## Workflow
 
