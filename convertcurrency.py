@@ -5,6 +5,7 @@ import os
 import fileslist
 import urllib2
 import pickle
+import json
 from alfredlist import AlfredItemsList
 
 default_currency = "PLN"
@@ -23,7 +24,8 @@ try:
         currency_dict = pickle.load(f)
 except:
     currency_dict = {}
-gconvert_pattern = "http://www.google.com/finance/converter?a=${amount}&from={from_currency}&to={to_currency}"
+# gconvert_pattern = "http://www.google.com/finance/converter?a=${amount}&from={from_currency}&to={to_currency}"
+gconvert_pattern = "http://www.google.com/ig/calculator?hl=en&q={amount}{from_currency}=?{to_currency}"
 
 
 def get_convertion_rate(from_currency, to_currency):
@@ -32,7 +34,7 @@ def get_convertion_rate(from_currency, to_currency):
     if not from_currency or not to_currency:
         return 0., "currency not specified"
     try:
-        result_html = urllib2.urlopen(
+        result_json = urllib2.urlopen(
             gconvert_pattern.format(
                 amount=1,
                 from_currency=from_currency,
@@ -40,16 +42,16 @@ def get_convertion_rate(from_currency, to_currency):
             ),
             timeout=timeout
         ).read()
-        convertion_rate = float(
-            result_html
-            .split("<span class=bld>")[1]
-            .split(" ")[0]
-        )
+        keys = ["lhs", "rhs", "error", "icc"]
+        for key in keys:
+            result_json = result_json.replace(key, '"{0}"'.format(key))
+        convertion_rate = float(json.loads(result_json)["rhs"].split(" ")[0])
         currency_dict[(from_currency, to_currency)] = convertion_rate
         global changed_currency_dict
         changed_currency_dict = True
         description = ""
-    except:
+    except Exception as e:
+        print e
         if (from_currency, to_currency) in currency_dict:
             convertion_rate = currency_dict[(from_currency, to_currency)]
             description = "OFFLINE"

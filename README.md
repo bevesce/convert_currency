@@ -1,6 +1,6 @@
 # Convert currency
 
-Alfred workflow and python script that converts currencies using [https://www.google.com/finance/converter]()
+Alfred workflow and python script that converts currencies using [http://www.google.com/ig/calculator
 
 Converter works offline, when there is no internet connection currency exchange rate from the last time when script/workflow were used to convert given pair of currencies.
 
