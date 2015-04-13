@@ -6,7 +6,7 @@ class AlfredItemsList(object):
     def __init__(self, items=None):
         self.items = items or []
         self.pattern = \
-            '<item arg="{arg}" uid="{uid}" valid="{valid}">"' + \
+            '<item arg="{arg}" uid="{uid}" valid="{valid}">' + \
             '<title>{title}</title>' + \
             '<subtitle>{subtitle}</subtitle>' + \
             '<icon>{icon}</icon>' + \
@@ -27,7 +27,7 @@ class AlfredItemsList(object):
         # prevent alfred from reordering items
         self.items.append(
             (arg, escape(title), escape(subtitle), valid, icon, uid)
-            )
+        )
 
     def __str__(self):
         items = "".join(

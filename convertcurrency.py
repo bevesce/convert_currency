@@ -1,142 +1,139 @@
-# -*- coding: utf-8 -*-
-
-import sys
-import os
-import fileslist
+from collections import namedtuple
 import urllib2
-import pickle
-import json
-from alfredlist import AlfredItemsList
-
-default_currency = "PLN"
-timeout = 5
-
-bundle_dir = "~/Library/Application Support/Alfred 2/Workflow Data/cow.pw.convert-currency/"
-bundle_dir = os.path.expanduser(bundle_dir)
-if not os.path.isdir(bundle_dir):
-    os.mkdir(bundle_dir)
-pickle_path = bundle_dir + 'convertion_rates.pickle'
-
-changed_currency_dict = False
-
-try:
-    with open(pickle_path, 'r') as f:
-        currency_dict = pickle.load(f)
-except:
-    currency_dict = {}
-# gconvert_pattern = "http://www.google.com/finance/converter?a=${amount}&from={from_currency}&to={to_currency}"
-gconvert_pattern = "http://www.google.com/ig/calculator?hl=en&q={amount}{from_currency}=?{to_currency}"
 
 
-def get_convertion_rate(from_currency, to_currency):
-    if from_currency == to_currency:
-        return 1., ""
-    if not from_currency or not to_currency:
-        return 0., "currency not specified"
-    try:
-        result_json = urllib2.urlopen(
-            gconvert_pattern.format(
-                amount=1,
-                from_currency=from_currency,
-                to_currency=to_currency,
-            ),
-            timeout=timeout
-        ).read()
-        keys = ["lhs", "rhs", "error", "icc"]
-        for key in keys:
-            result_json = result_json.replace(key, '"{0}"'.format(key))
-        convertion_rate = float(json.loads(result_json)["rhs"].split(" ")[0])
-        currency_dict[(from_currency, to_currency)] = convertion_rate
-        global changed_currency_dict
-        changed_currency_dict = True
-        description = ""
-    except Exception as e:
-        print e
-        if (from_currency, to_currency) in currency_dict:
-            convertion_rate = currency_dict[(from_currency, to_currency)]
-            description = "OFFLINE"
-        else:
-            convertion_rate = 0.
-            description = "NOT AVAILABLE"
-    return convertion_rate, description
+DEFAULT_AMOUNT = 1
+DEFAULT_CURRENCIES_TO_CONVERT_FROM = ('EUR', 'USD')
+DEFAULT_CURRENCIES_TO_CONVERT_TO = ('PLN', )
 
 
-# use all caps when adding words or something
-symbols = {
-    "£": "GBP",
-    "$": "USD",
-    "€": "EUR",
-}
+def set_default_ammount(amount):
+    global DEFAULT_AMOUNT
+    DEFAULT_AMOUNT = amount
 
 
-def parse_query(query):
-    for symbol in symbols:
-        query = query.replace(symbol, " " + symbols[symbol])
-    query = query.strip().upper()
-    splitted = query.split(" ")
-    splitted = [s for s in splitted if s]
-    amount = 1.
-    from_currency = default_currency
-    to_currency = None
-    if len(splitted) > 0:
-        amount = float(splitted[0])
-    if len(splitted) > 1:
-        from_currency = splitted[1]
-    if len(splitted) > 2:
-        to_currency = splitted[-1]
-    return (amount, from_currency, to_currency)
-
-icons = {
-    "USD": "icons/USD.png",
-    "PLN": "icons/PLN.png",
-    "EUR": "icons/EUR.png",
-    "GBP": "icons/GBP.png",
-    "JPY": "icons/JPY.png",
-}
+def set_default_currencies_to_convert_from(*args):
+    global DEFAULT_CURRENCIES_TO_CONVERT_FROM
+    DEFAULT_CURRENCIES_TO_CONVERT_FROM = _make_tuple_of_uppercase(args)
 
 
-def xml(query):
-    query = query.upper()
-    amount, from_currency, to_currency = parse_query(query)
+def set_default_currencies_to_convert_to(*args):
+    global DEFAULT_CURRENCIES_TO_CONVERT_TO
+    DEFAULT_CURRENCIES_TO_CONVERT_TO = _make_tuple_of_uppercase(args)
 
-    currencies = fileslist.to_list()
-    if to_currency:
-        currencies = [to_currency] + currencies
 
-    al = AlfredItemsList()
-    for to_currency in currencies:
-        if to_currency == from_currency:
-            continue
-        convertion_rate, description = get_convertion_rate(from_currency, to_currency)
-        converted_amount = str(amount * convertion_rate) + " " + to_currency
-        al.append(
-            converted_amount,
-            converted_amount,
-            description,
-            icon=icons.get(to_currency, "icons/gen.png")
+def _make_tuple_of_uppercase(args):
+    return tuple((a.upper() for a in args))
+
+
+def parse_input(input_text):
+    """
+    * -> DEFAULT_AMOUNT DEFAULT_CURRENCIES_TO_CONVERT_FROM DEFAULT_CURRENCIES_TO_CONVERT_TO
+    * 10 -> 10 DEFAULT_CURRENCIES_TO_CONVERT_FROM DEFAULT_CURRENCIES_TO_CONVERT_TO
+    * 10 GBP -> 10 (GBP) DEFAULT_CURRENCIES_TO_CONVERT_TO
+    * 10 GBP EUR -> 10 (GBP) (EUR)
+    * 10 GBP EUR USD -> 10 (GBP) (EUR, USD)
+    * 10 gbp in eur usd -> 10 (GBP) (EUR, USD)
+    * 10 gbp eur in usd -> 10 (GBP, USD) (EUR)
+    * 10 gbp eur > usd -> 10 (GBP, USD) (EUR)
+    """
+    currency_to_convert = namedtuple(
+        'CurrencyToConvert',
+        ['amount', 'to_convert_from', 'to_convert_to']
+    )
+    splited = _split_to_words(input_text)
+    amount = _parse_amount(splited)
+    convert_from, convert_to = _split_currencies(splited[1:])
+    convert_from = convert_from or DEFAULT_CURRENCIES_TO_CONVERT_FROM
+    convert_to = convert_to or DEFAULT_CURRENCIES_TO_CONVERT_TO
+    return currency_to_convert(amount, convert_from, convert_to)
+
+
+def _split_to_words(input_text):
+    splited = input_text.upper().replace(',', '').strip().split(' ')
+    return [w for w in splited if w]
+
+
+def _parse_amount(splited):
+    return float(splited[0]) if splited else DEFAULT_AMOUNT
+
+
+def _split_currencies(splited_words):
+    if not splited_words:
+        return None, None
+    if len(splited_words) == 1:
+        return _make_tuple_of_uppercase(splited_words), None
+    for separator in ('IN', '>'):
+        if separator in splited_words:
+            return _split_currencies_using_separator(separator, splited_words)
+    return _make_tuple_of_uppercase([splited_words[0]]), _make_tuple_of_uppercase(splited_words[1:])
+
+
+def _split_currencies_using_separator(separator, splited_words):
+    separator_index = splited_words.index(separator)
+    return (
+        _make_tuple_of_uppercase(splited_words[:separator_index]),
+        _make_tuple_of_uppercase(splited_words[separator_index + 1:])
+    )
+
+
+class Conversion(object):
+    url_template = "http://www.google.com/finance/converter?a={amount}&from={from_currency}&to={to_currency}"
+
+    def __init__(self, amount, currency_from, currency_to):
+        self.amount = amount
+        self.currency_from = currency_from
+        self.currency_to = currency_to
+        self.converted_amount = self._convert()
+
+    def _convert(self):
+        full_url = self._make_full_url()
+        result_html = urllib2.urlopen(full_url).read()
+        return self._parse_html(result_html)
+
+    def _make_full_url(self):
+        return self.url_template.format(
+            amount=self.amount,
+            from_currency=self.currency_from,
+            to_currency=self.currency_to,
         )
-    return al
+
+    def _parse_html(self, html):
+        try:
+            return float(
+                html.split("<span class=bld>")[1].split(" ")[0]
+            )
+        except Exception:
+            return None
+
+    def __unicode__(self):
+        if self.converted_amount is None:
+            return u'conversion error'
+        return u'{converted_amount} {to_currency} = {amount} {from_currency}'.format(
+            converted_amount=self.converted_amount,
+            to_currency=self.currency_to,
+            amount=self.amount,
+            from_currency=self.currency_from,
+        )
 
 
-if __name__ == "__main__":
-    query = " ".join(sys.argv[1:])
-    amount, from_currency, to_currency = parse_query(query)
-
-    currencies = fileslist.to_list()
-    if to_currency:
-        currencies = [to_currency] + currencies
-    for to_currency in currencies:
-        if to_currency == from_currency:
-            continue
-        convertion_rate, description = get_convertion_rate(from_currency, to_currency)
-        converted_amount = amount * convertion_rate
-        print str(converted_amount) + " " + to_currency, description
+def create_conversions(parsed_input):
+    for cfrom in parsed_input.to_convert_from:
+        for cto in parsed_input.to_convert_to:
+            yield Conversion(
+                parsed_input.amount,
+                currency_from=cfrom,
+                currency_to=cto
+            )
 
 
-def save_dict():
-    if changed_currency_dict:
-        with open(pickle_path, 'w') as f:
-            pickle.dump(currency_dict, f)
+def convert_currency(input_text):
+    parsed_input = parse_input(input_text)
+    conversions = create_conversions(parsed_input)
+    return conversions
 
-import atexit
-atexit.register(save_dict)
+
+if __name__ == '__main__':
+    import sys
+    input_text = ' '.join(sys.argv[1:])
+    print u'\n'.join((unicode(c) for c in convert_currency(input_text)))
