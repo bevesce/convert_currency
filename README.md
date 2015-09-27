@@ -2,7 +2,7 @@
 
 Alfred workflow and python script that converts currencies using [http://www.google.com/finance/converter](http://www.google.com/finance/converter)
 
-![alfred workflow](http://procrastinationlog.net/images/convert-currency.png)
+![alfred workflow](images/convert-currency.png)
 
 ## Usage
 
