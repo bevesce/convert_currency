@@ -1,23 +1,25 @@
 # Convert Currency
 
-Alfred workflow and python script that converts currencies using [http://www.google.com/finance/converter](http://www.google.com/finance/converter)
+Alfred workflow and python3 script that converts currencies using [fixer.io](http://fixer.io) API.
 
-![alfred workflow](images/convert-currency.png)
+![alfred workflow](screenshots/alfred.png)
 
 ## Usage
 
-Set this two variables in *convertcurrency.py*:
 ```
-    DEFAULT_CURRENCIES_TO_CONVERT_FROM = ('EUR', 'USD')
-    DEFAULT_CURRENCIES_TO_CONVERT_TO = ('PLN', )
+> python3 convert_currency.py 1 eur zł
+4.2869 zł
 ```
 
-And then just pass argument that looks something like one of those examples:
+You can pass argument that looks something like one of those examples:
 
 * 10
 * 10 gbp
 * 10 gbp eur
 * 10 gbp eur usd
-* 10 pln in eur usd
-* 10 pln eur in usd
-* 10 pln eur > usd
+
+You can set this two variables in *convertcurrency.py*:
+```
+DEFAULT_FROM_CURRENCY = 'EUR'
+DEFAULT_TO_CURRENCIES = ('PLN', 'USD', 'EUR')
+```
