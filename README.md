@@ -18,7 +18,7 @@ You can pass argument that looks something like one of those examples:
 * 10 gbp eur
 * 10 gbp eur usd
 
-You can set this two variables in *convertcurrency.py*:
+You can set this two variables in *convert_currency.py*:
 ```
 DEFAULT_FROM_CURRENCY = 'EUR'
 DEFAULT_TO_CURRENCIES = ('PLN', 'USD', 'EUR')
